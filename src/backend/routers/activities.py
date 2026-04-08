@@ -31,27 +31,31 @@ def get_activities(
       Activities with no difficulty set are included in all results.
     """
     # Build the query based on provided filters
-    query = {}
-    
+    conditions = []
+
     if day:
-        query["schedule_details.days"] = {"$in": [day]}
-    
+        conditions.append({"schedule_details.days": {"$in": [day]}})
+
     if start_time:
-        query["schedule_details.start_time"] = {"$gte": start_time}
-    
+        conditions.append({"schedule_details.start_time": {"$gte": start_time}})
+
     if end_time:
-        query["schedule_details.end_time"] = {"$lte": end_time}
-    
+        conditions.append({"schedule_details.end_time": {"$lte": end_time}})
+
     if difficulty:
         # Include activities that match the difficulty OR have no difficulty set
-        difficulty_condition = {"$or": [
+        conditions.append({"$or": [
             {"difficulty": difficulty},
             {"difficulty": {"$exists": False}}
-        ]}
-        if query:
-            query = {"$and": [query, difficulty_condition]}
-        else:
-            query = difficulty_condition
+        ]})
+
+    # Combine all conditions
+    if len(conditions) == 0:
+        query = {}
+    elif len(conditions) == 1:
+        query = conditions[0]
+    else:
+        query = {"$and": conditions}
     
     # Query the database
     activities = {}
