@@ -50,7 +50,7 @@ def get_activities(
         ]})
 
     # Combine all conditions
-    if len(conditions) == 0:
+    if not conditions:
         query = {}
     elif len(conditions) == 1:
         query = conditions[0]
