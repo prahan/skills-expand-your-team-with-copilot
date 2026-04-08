@@ -568,6 +568,9 @@ document.addEventListener("DOMContentLoaded", () => {
           </div>
         `
         }
+        <button class="share-button" data-activity="${name}" aria-label="Share this activity" title="Share">
+          📤 Share
+        </button>
       </div>
     `;
 
@@ -587,7 +590,95 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
+    // Add click handler for share button
+    const shareButton = activityCard.querySelector(".share-button");
+    shareButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      shareActivity(name, details, event.currentTarget);
+    });
+
     activitiesList.appendChild(activityCard);
+  }
+
+  // Function to share an activity
+  function shareActivity(name, details, triggerButton) {
+    const shareUrl = `${window.location.origin}${window.location.pathname}?activity=${encodeURIComponent(name)}`;
+    const shareText = `Check out this activity at Mergington High School: ${name} - ${details.description}`;
+
+    // Use the native Web Share API if available (works on mobile and some desktops)
+    if (navigator.share) {
+      navigator.share({
+        title: `${name} - Mergington High School`,
+        text: shareText,
+        url: shareUrl,
+      }).catch(() => {
+        // User cancelled or share failed — do nothing
+      });
+      return;
+    }
+
+    // Fallback: show a small share menu near the button
+    showShareMenu(name, details, shareUrl, shareText, triggerButton);
+  }
+
+  // Show a share options menu (fallback when Web Share API is unavailable)
+  function showShareMenu(name, details, shareUrl, shareText, triggerButton) {
+    // If this button's menu is already open, close it (toggle)
+    const existingMenu = document.querySelector(".share-menu");
+    if (existingMenu) {
+      existingMenu.remove();
+      if (existingMenu.dataset.trigger === triggerButton.dataset.activity) {
+        return;
+      }
+    }
+
+    const menu = document.createElement("div");
+    menu.className = "share-menu";
+    menu.dataset.trigger = name;
+    menu.innerHTML = `
+      <div class="share-menu-title">Share this activity</div>
+      <button class="share-option" id="share-copy">🔗 Copy Link</button>
+      <a class="share-option" href="mailto:?subject=${encodeURIComponent("Check out: " + name)}&body=${encodeURIComponent(shareText + "\n\n" + shareUrl)}" target="_blank">✉️ Email</a>
+      <a class="share-option" href="https://wa.me/?text=${encodeURIComponent(shareText + " " + shareUrl)}" target="_blank">💬 WhatsApp</a>
+    `;
+
+    // Position the menu near the share button
+    document.body.appendChild(menu);
+    const rect = triggerButton.getBoundingClientRect();
+    const menuRect = menu.getBoundingClientRect();
+    let top = rect.top + window.scrollY - menuRect.height - 8;
+    let left = rect.left + window.scrollX;
+
+    // Keep within viewport
+    if (top < window.scrollY) {
+      top = rect.bottom + window.scrollY + 8;
+    }
+    if (left + menuRect.width > window.innerWidth) {
+      left = window.innerWidth - menuRect.width - 8;
+    }
+
+    menu.style.top = `${top}px`;
+    menu.style.left = `${left}px`;
+
+    // Handle copy link
+    menu.querySelector("#share-copy").addEventListener("click", () => {
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        showMessage("Link copied to clipboard!", "success");
+      }).catch(() => {
+        // Clipboard API not available, show the URL in a prompt
+        window.prompt("Copy this link:", shareUrl);
+      });
+      menu.remove();
+    });
+
+    // Close menu when clicking elsewhere
+    function closeMenu(event) {
+      if (!menu.contains(event.target)) {
+        menu.remove();
+        document.removeEventListener("click", closeMenu);
+      }
+    }
+    document.addEventListener("click", closeMenu);
   }
 
   // Event listeners for search and filter
